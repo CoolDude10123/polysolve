@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PolySolve</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Courier+Prime&display=swap');
+        body{background:#000;color:#0f0;font-family:'Courier Prime',monospace;margin:0;padding:20px;line-height:1.4}
+        .c{max-width:1000px;margin:auto}
+        .h{text-align:center;margin-bottom:30px}
+        .a{font-size:18px;white-space:pre;color:#0f0;margin:10px 0}
+        .i{background:#111;border:1px solid #0f0;padding:15px;margin-bottom:20px}
+        input,textarea,button{background:#000;color:#0f0;border:1px solid #0f0;padding:8px;font-family:'Courier Prime',monospace}
+        button{cursor:pointer;padding:10px 20px}
+        button:hover{background:#0f0;color:#000}
+        .chat{background:#111;border:1px solid #0f0;height:400px;overflow-y:auto;padding:15px;margin-bottom:20px}
+        .m{margin-bottom:15px}
+        .u{color:#0c0}
+        .ai{color:#0fa}
+        .ua{border:2px dashed #0f0;padding:20px;text-align:center;margin-bottom:10px;cursor:pointer}
+        .s{display:flex;flex-wrap:wrap;gap:10px}
+        .sp{max-width:150px;border:1px solid #0f0}
+    </style>
+</head>
+<body>
+<div class="c">
+    <div class="h">
+        <pre class="ascii">
+    d8888b.  .d88b.  db      db    db .d8888.  .d88b.  db      db    db d88888b
+88  `8D .8P  Y8. 88      `8b  d8' 88'  YP .8P  Y8. 88      88    88 88'
+    88oodD' 88    88 88       `8bd8'  `8bo.   88    88 88      Y8    8P 88ooooo
+    88~~~   88    88 88         88      `Y8b. 88    88 88      `8b  d8' 88~~~~~
+88      `8b  d8' 88booo.    88    db   8D `8b  d8' 88booo.  `8bd8'  88.
+    88       `Y88P'  Y88888P    YP    `8888Y'  `Y88P'  Y88888P    YP    Y88888P
+            </pre>
+        <h1 style="margin:0;color:#0f0">PolySolve</h1>
+        <p style="margin:5px 0">v0.96b</p>
+        <div style="text-align:left;max-width:600px;margin:20px auto;background:#111;padding:15px;border:1px solid #0f0">
+            1. Paste Groq key + Save<br>
+            2. Upload samples<br>
+            3. Chat<br>
+            4. Export PDF
+        </div>
+    </div>
+
+    <div class="i">
+        <label>Groq API Key:</label><br>
+        <input type="text" id="k" placeholder="gsk_..." style="width:70%">
+        <button onclick="sK()">Save</button>
+        <button onclick="cK()">Clear</button>
+        <span id="ks" style="margin-left:15px"></span>
+    </div>
+
+    <div class="i">
+        <div class="ua" onclick="document.getElementById('fu').click()">Upload Writing Samples</div>
+        <input type="file" id="fu" multiple style="display:none" onchange="hS(event)">
+        <div id="sl" class="s"></div>
+    </div>
+
+    <div class="chat" id="cw"></div>
+
+    <div class="i">
+        <textarea id="ui" rows="3" style="width:100%" placeholder="Ask me to write something..."></textarea><br><br>
+        <button onclick="sm()" style="width:100%;padding:12px">Send to Groq</button>
+        <button onclick="ePDF()" style="width:100%;margin-top:10px">Export as PDF</button>
+    </div>
+</div>
+
+<script>
+let k=localStorage.getItem('gK')||'',s=[],c=[];
+if(k){document.getElementById('ks').innerHTML='✓ Key loaded';document.getElementById('k').placeholder='Key saved';}
+
+function sK(){k=document.getElementById('k').value.trim();if(k){localStorage.setItem('gK',k);document.getElementById('ks').innerHTML='✓ Saved';document.getElementById('k').value='';document.getElementById('k').placeholder='Key saved';}else{document.getElementById('ks').innerHTML='Enter key';}}
+function cK(){localStorage.removeItem('gK');k='';document.getElementById('ks').innerHTML='Cleared';document.getElementById('k').value='';}
+function hS(e){let f=e.target.files;for(let i=0;i<f.length;i++){let r=new FileReader();r.onload=ev=>{s.push({n:f[i].name,d:ev.target.result});rS();};if(f[i].type.startsWith('image/'))r.readAsDataURL(f[i]);else r.readAsText(f[i]);}}
+function rS(){document.getElementById('sl').innerHTML=s.map((x,i)=>`<div><strong>${x.n}</strong><br>${x.d&&x.d.startsWith('data:image')?`<img src="${x.d}" class="sp">`:'Loaded'} <button onclick="rSi(${i})">Remove</button></div>`).join('');}
+function rSi(i){s.splice(i,1);rS();}
+async function sm(){let i=document.getElementById('ui'),p=i.value.trim();if(!p)return;if(!k){alert('Save Groq key first');return;}addM('u',p);i.value='';let l=addM('ai','Connecting...');try{let st=s.map(x=>x.d&&x.d.substring(0,600)||'[sample]').join('\n\n');let res=await fetch("https://api.groq.com/openai/v1/chat/completions",{method:"POST",headers:{"Authorization":`Bearer ${k}`,"Content-Type":"application/json"},body:JSON.stringify({model:"llama-3.1-8b-instant",messages:[{role:"system",content:`Mimic this writing style exactly:\n\n${st}`},...c,{role:"user",content:p}],temperature:0.75,max_tokens:1200})});if(!res.ok){let err=await res.text();throw new Error(`HTTP ${res.status} - ${err}`);}let d=await res.json();let r=d.choices[0].message.content;document.getElementById('cw').removeChild(l);addM('ai',r);c.push({role:"user",content:p},{role:"assistant",content:r});}catch(e){console.error(e);document.getElementById('cw').removeChild(l);addM('ai','Error: '+e.message+'<br>Host on GitHub Pages if using local file');}}
+function addM(t,txt){let w=document.getElementById('cw'),m=document.createElement('div');m.className=`m ${t==='u'?'u':'ai'}`;m.innerHTML=`<strong>${t==='u'?'You':'PolySolve'}:</strong><br>${txt.replace(/\n/g,'<br>')}`;w.appendChild(m);w.scrollTop=w.scrollHeight;return m;}
+function ePDF(){const{jsPDF}=window.jspdf,d=new jsPDF();d.setFont("courier");d.setFontSize(12);d.text("PolySolve Export "+new Date().toLocaleString(),20,20);let y=40;c.forEach(m=>{let pre=m.role==='user'?'Q: ':'A: ';let lines=d.splitTextToSize(pre+m.content,170);d.text(lines,20,y);y+=lines.length*7+5;if(y>270){d.addPage();y=20;}});d.save("polysolve.pdf");}
+document.getElementById('ui').addEventListener('keypress',e=>{if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();sm();}});
+window.onload=()=>{addM('ai','Ready. Add key and samples.');};
+</script>
+</body>
+</html>
