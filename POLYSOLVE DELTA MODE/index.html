@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PolySolve</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Courier+Prime&display=swap');
+        body{background:#000;color:#f066ff;font-family:'Courier Prime',monospace;margin:0;padding:20px;line-height:1.4}
+        .c{max-width:1000px;margin:auto}
+        .h{text-align:center;margin-bottom:30px}
+        .a{font-size:16px;white-space:pre;color:#f066ff;margin:10px 0;line-height:1.1}
+        .i{background:#111;border:1px solid #f066ff;padding:15px;margin-bottom:20px}
+        input,textarea,button{background:#000;color:#f066ff;border:1px solid #f066ff;padding:8px;font-family:'Courier Prime',monospace}
+        button{cursor:pointer;padding:10px 20px}
+        button:hover{background:#f066ff;color:#000}
+        .chat{background:#111;border:1px solid #f066ff;height:400px;overflow-y:auto;padding:15px;margin-bottom:20px}
+        .m{margin-bottom:15px}
+        .u{color:#f066ff}
+        .ai{color:#fbd9ff}
+        .ua{border:2px dashed #f066ff;padding:20px;text-align:center;margin-bottom:10px;cursor:pointer}
+        
+        /* Easter egg styling */
+        .easter-egg {
+            text-align:center; 
+            margin:40px 0 20px; 
+            opacity:0.05; 
+            transition: opacity 5s;
+        }
+        .easter-egg:hover {opacity:0.9;}
+        .easter-egg img {
+            max-width:500px;
+            margin:0 12px;
+            border:1px solid #f066ff;
+            border-radius:4px;
+        }
+    </style>
+</head>
+<body>
+<div class="c">
+    <div class="h">
+        <pre class="a">    d8888b.  .d88b.  db      db    db .d8888.  .d88b.  db      db    db d88888b
+88  `8D .8P  Y8. 88      `8b  d8' 88'  YP .8P  Y8. 88      88    88 88'
+    88oodD' 88    88 88       `8bd8'  `8bo.   88    88 88      Y8    8P 88ooooo
+    88~~~   88    88 88         88      `Y8b. 88    88 88      `8b  d8' 88~~~~~
+88      `8b  d8' 88booo.    88    db   8D `8b  d8' 88booo.  `8bd8'  88.
+    88       `Y88P'  Y88888P    YP    `8888Y'  `Y88P'  Y88888P    YP    Y88888P</pre>
+        <h1 style="margin:0;color:#f066ff">PolySolve</h1>
+        <p style="margin:5px 0">v0.96b</p>
+        
+        <div style="background:#111;border:1px solid #f066ff;padding:12px;margin:15px auto;max-width:600px;font-size:14px;">
+            <strong>Quick Start:</strong> Save your Groq key • Upload writing samples (PDF/Text) for style mimicry • Type prompt &amp; Send
+        </div>
+    </div>
+
+    <div class="i">
+        <label>Groq Key:</label><br>
+        <input type="text" id="k" placeholder="gsk_..." style="width:70%">
+        <button onclick="sK()">Save</button>
+        <button onclick="cK()">Clear</button>
+        <span id="ks"></span>
+    </div>
+
+    <div class="i">
+        <div class="ua" onclick="document.getElementById('fu').click()">Upload Samples (PDF/Text best)</div>
+        <input type="file" id="fu" multiple style="display:none" onchange="hS(event)">
+        <div id="sl"></div>
+    </div>
+
+    <div class="chat" id="cw"></div>
+
+    <div class="i">
+        <textarea id="ui" rows="3" style="width:100%" placeholder="Write an essay on..."></textarea><br><br>
+        <button onclick="sm()" style="width:100%;padding:12px">Send to Groq</button>
+        <button onclick="ePDF()" style="width:100%;margin-top:10px">Export PDF</button>
+    </div>
+
+    <!-- Easter egg images at the bottom -->
+    <div class="easter-egg">
+        <img src="zucc.jpeg" alt="🕵️" title="Z U C C">
+    </div>
+</div>
+
+<script>
+pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+
+let k=localStorage.getItem('gK')||'',samples=[],history=[];
+if(k) document.getElementById('ks').innerHTML = '✓ Key loaded';
+
+function sK(){k=document.getElementById('k').value.trim();if(k){localStorage.setItem('gK',k);document.getElementById('ks').innerHTML='✓ Saved';document.getElementById('k').value='';}}
+function cK(){localStorage.removeItem('gK');k='';document.getElementById('ks').innerHTML='Cleared';}
+
+async function hS(e){
+    let files = e.target.files;
+    for(let file of files){
+        let reader = new FileReader();
+        if(file.type === 'application/pdf'){
+            reader.onload = async ev => {
+                let typedarray = new Uint8Array(ev.target.result);
+                let pdf = await pdfjsLib.getDocument(typedarray).promise;
+                let text = '';
+                for(let i=1;i<=pdf.numPages;i++){
+                    let page = await pdf.getPage(i);
+                    let content = await page.getTextContent();
+                    text += content.items.map(item => item.str).join(' ') + '\n\n';
+                }
+                samples.push(text.substring(0,2000));
+                document.getElementById('sl').innerHTML += `<div>PDF Loaded: ${file.name}</div>`;
+            };
+            reader.readAsArrayBuffer(file);
+        } else {
+            reader.onload = ev => {
+                samples.push(ev.target.result.substring(0,2000));
+                document.getElementById('sl').innerHTML += `<div>Loaded: ${file.name}</div>`;
+            };
+            reader.readAsText(file);
+        }
+    }
+}
+
+async function sm(){
+    let prompt = document.getElementById('ui').value.trim();
+    if(!prompt || !k) return alert('Need prompt and key');
+    addM('u', prompt);
+    document.getElementById('ui').value = '';
+    let loading = addM('ai', 'Connecting...');
+    try{
+        let sampleText = samples.join('\n\n---\n\n') || 'No samples.';
+        let res = await fetch("https://api.groq.com/openai/v1/chat/completions",{
+            method:"POST",
+            headers:{"Authorization":`Bearer ${k}`,"Content-Type":"application/json"},
+            body:JSON.stringify({
+                model:"llama-3.1-8b-instant",
+                messages:[
+                    {role:"system", content:`You are mimicking the user's real writing style from the provided samples.
+
+Key rules for human-sounding writing:
+- Add specific but "useless" details that feel like real memory (e.g. random times, places, small observations).
+- Let metaphors be slightly weird, long, or imperfect — don't polish them too much.
+- Allow natural tonal shifts: casual swearing, tangents, or sudden voice breaks if it fits the user's style.
+- Be specific about actual content, facts, mistakes, or insights — don't just describe feelings.
+- Avoid repeating the same structural beats or dialogue.
+- Avoid generic profound wrap-ups. End with something tied to the weird specifics of the story.
+- Embrace uneven texture: some long rambling sentences, some short/abrupt ones. Don't make everything smooth and even.
+- Prioritize voice and imperfection over perfection.
+
+Samples:
+${sampleText}
+
+Now write naturally like the user would.`},
+                    ...history,
+                    {role:"user", content:prompt}
+                ],
+                temperature:0.8,
+                max_tokens:1200
+            })
+        });
+        if(!res.ok) throw new Error('HTTP '+res.status);
+        let data = await res.json();
+        let reply = data.choices[0].message.content;
+        document.getElementById('cw').removeChild(loading);
+        addM('ai', reply);
+        history.push({role:"user",content:prompt},{role:"assistant",content:reply});
+    } catch(e){
+        document.getElementById('cw').removeChild(loading);
+        addM('ai', 'Error: '+e.message);
+    }
+}
+
+function addM(sender, text){
+    let chat = document.getElementById('cw');
+    let msg = document.createElement('div');
+    msg.className = `m ${sender}`;
+    msg.innerHTML = `<strong>${sender==='u'?'You':'PolySolve'}:</strong><br>${text.replace(/\n/g,'<br>')}`;
+    chat.appendChild(msg);
+    chat.scrollTop = chat.scrollHeight;
+    return msg;
+}
+
+function ePDF(){
+    const {jsPDF} = window.jspdf;
+    const doc = new jsPDF();
+    doc.setFont("helvetica");
+    doc.setFontSize(11);
+    doc.text("PolySolve Export " + new Date().toLocaleString(),20,20);
+    let y = 40;
+    history.forEach(m => {
+        let prefix = m.role === 'user' ? 'Q: ' : 'A: ';
+        let clean = m.content.replace(/[^\x20-\x7E\n]/g,' ');
+        let lines = doc.splitTextToSize(prefix + clean, 170);
+        doc.text(lines,20,y);
+        y += lines.length * 7 + 5;
+        if(y > 270){doc.addPage(); y=20;}
+    });
+    doc.save("polysolve.pdf");
+}
+
+document.getElementById('ui').addEventListener('keypress', e => {if(e.key==='Enter' && !e.shiftKey){e.preventDefault();sm();}});
+window.onload = () => addM('ai', 'Ready. Upload PDFs or text files for style matching.');
+</script>
+</body>
+</html>
